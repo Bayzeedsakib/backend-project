@@ -1,98 +1,123 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 🎵 Music App Moderator API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+The backend of a music app moderation system, built with **NestJS**, **TypeORM** and **PostgreSQL**. Moderators register and log in with **JWT**, then manage their profile, the tracks they moderate, and playlists.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+The frontend lives in **[next-app-angel](https://github.com/Bayzeedsakib/next-app-angel)** (Next.js 16).
 
-## Description
+![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=flat-square&logo=nestjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![TypeORM](https://img.shields.io/badge/TypeORM-FE0803?style=flat-square&logo=typeorm&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## ✨ Features
 
-## Project setup
+- **JWT authentication** with Passport (`passport-jwt`) and a reusable `JwtAuthGuard`
+- **Password hashing** with bcrypt
+- **Request validation** with `class-validator` and a global `ValidationPipe` (`whitelist` + `transform`)
+- **Full moderator CRUD**, plus a `PATCH` endpoint to toggle `active` / `inactive` status
+- Shows all three main relationship types in TypeORM:
+  - **One-to-one**: Moderator ↔ Profile
+  - **One-to-many**: Moderator → Tracks
+  - **Many-to-many**: Tracks ↔ Playlists
+- Configuration through environment variables (`@nestjs/config`)
 
-```bash
-$ npm install
+## 🗂 Data Model
+
+```
+┌────────────┐ 1     1 ┌──────────┐
+│ Moderator  │─────────│ Profile  │   displayName, bio
+│ email      │         └──────────┘
+│ password   │
+│ status     │ 1     * ┌──────────┐ *     * ┌───────────┐
+│            │─────────│  Track   │─────────│ Playlist  │
+└────────────┘         │ title    │         │ name      │
+                       │ artist   │         └───────────┘
+                       └──────────┘
 ```
 
-## Compile and run the project
+## 📡 API Endpoints
+
+### Auth: `/auth`
+
+| Method | Route | Description |
+|---|---|---|
+| `POST` | `/auth/register` | Register a moderator `{ email, password, displayName?, bio? }` |
+| `POST` | `/auth/login` | Log in and receive `{ access_token }` |
+
+### Moderators: `/moderators` (🔒 Bearer token unless noted)
+
+| Method | Route | Description |
+|---|---|---|
+| `POST` | `/moderators` | Create a moderator (public) |
+| `GET` | `/moderators` | List all moderators |
+| `GET` | `/moderators/:id` | Get one moderator |
+| `PUT` | `/moderators/:id` | Update a moderator |
+| `PATCH` | `/moderators/:id/status` | Set status `{ "status": "active" \| "inactive" }` |
+| `DELETE` | `/moderators/:id` | Delete a moderator |
+
+### Tracks & Playlists (🔒)
+
+| Method | Route | Description |
+|---|---|---|
+| `POST` | `/moderators/:id/tracks` | Add a track `{ title, artist? }` to a moderator |
+| `GET` | `/moderators/:id/tracks` | List a moderator's tracks |
+| `DELETE` | `/moderators/tracks/:trackId` | Delete a track |
+| `POST` | `/moderators/playlists` | Create a playlist `{ name, trackIds: [] }` |
+| `GET` | `/moderators/playlists/:playlistId` | Get a playlist with its tracks |
+| `POST` | `/moderators/playlists/:playlistId/tracks/:trackId` | Add a track to a playlist |
+| `DELETE` | `/moderators/playlists/:playlistId/tracks/:trackId` | Remove a track from a playlist |
+
+## 🚀 Getting Started
+
+**Prerequisites:** Node.js 18+ and PostgreSQL.
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+git clone https://github.com/Bayzeedsakib/backend-project.git
+cd backend-project
+npm install
 ```
 
-## Run tests
+Create a `.env` file in the project root:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASS=your_password
+DB_NAME=music_moderator
+JWT_SECRET=change_me_to_a_long_random_string
+JWT_EXPIRATION=1d
+PORT=3000
+```
+
+Run the server:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run start:dev     # watch mode
+npm run start:prod    # after `npm run build`
 ```
 
-## Deployment
+The API runs at `http://localhost:3000`. TypeORM `synchronize` is on, so tables are created automatically in development.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## 🧪 Tests
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run test       # unit tests
+npm run test:e2e   # end-to-end tests
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## 🧱 Project Structure
 
-## Resources
+```
+src/
+├── auth/          # register/login, JWT strategy & guard
+├── moderators/    # controller, service, DTOs
+├── entities/      # Moderator, Profile, Track, Playlist
+├── app.module.ts  # TypeORM + config wiring
+└── main.ts        # bootstrap + global ValidationPipe
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+## 👤 Author
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+**Bayzeed Sakib** · [GitHub](https://github.com/Bayzeedsakib) · [Portfolio](https://bayzeed-sakib-portfolio.vercel.app)
